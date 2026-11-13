@@ -10,6 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shift Hub">
 <meta name="theme-color" content="#120a2e">
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ================= ТЕМЫ ================= */
@@ -251,6 +252,20 @@ select.in option{color:#111}
 .toast.out{animation:tOut .35s ease forwards}
 @keyframes tIn{from{opacity:0;transform:perspective(600px) rotateX(-60deg) translateY(-20px)}to{opacity:1;transform:none}}
 @keyframes tOut{to{opacity:0;transform:translateX(60px)}}
+/* ================= ВХОД ================= */
+body.locked .wrap,body.locked footer,body.locked #toasts{display:none}
+#login{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;padding:20px}
+body.locked #login{display:flex}
+.lg{width:min(400px,100%);background:var(--card);border:1px solid var(--line);border-radius:26px;padding:30px 26px;box-shadow:var(--shadow);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);text-align:center;animation:enter .8s cubic-bezier(.2,.8,.2,1) both}
+.lg .logo{margin:0 auto 14px}
+.lg h1{font-size:34px}
+.lg p{color:var(--mut);font-weight:700;margin:8px 0 20px}
+.lg form{display:flex;flex-direction:column;gap:10px}
+.lg .in{width:100%;font-size:16px}
+.lg .btn{width:100%;padding:13px;font-size:16px}
+.lg .err{color:#ff4d6d;font-weight:800;font-size:13px;min-height:18px}
+.lg .lock{font-size:12px;color:var(--mut);font-weight:700;margin-top:14px}
+.logout{display:inline-flex;margin-top:8px;margin-left:6px;padding:6px 10px;font-size:12px}
 footer{position:relative;z-index:1;text-align:center;color:var(--mut);font-size:12px;font-weight:700;padding:10px 0 30px}
 
 @media (max-width:1080px){.grid{grid-template-columns:1fr}.top{grid-template-columns:1fr}.stats{justify-content:flex-start}}
@@ -262,6 +277,20 @@ footer{position:relative;z-index:1;text-align:center;color:var(--mut);font-size:
 <div class="stars"></div><div class="sun"></div>
 <div id="scene"><div class="world" id="world"></div></div>
 
+<div id="login">
+ <div class="lg">
+  <div class="logo"><div class="chip" style="--c:#ff3d8b"><div class="l"></div><div class="l e"></div><div class="l e"></div><div class="l"></div><b>24/7</b></div></div>
+  <h1>SHIFT HUB</h1>
+  <p>🔒 Вход только для команды</p>
+  <form id="lgForm" autocomplete="on">
+   <input class="in" id="lgEmail" type="email" placeholder="Email команды" autocomplete="username" required>
+   <input class="in" id="lgPass" type="password" placeholder="Пароль" autocomplete="current-password" required>
+   <div class="err" id="lgErr"></div>
+   <button class="btn pri" id="lgBtn">Войти</button>
+  </form>
+  <div class="lock">Устройство запомнит вход. Пароль знает только команда.</div>
+ </div>
+</div>
 <div class="wrap">
  <header class="top">
   <div class="brand">
@@ -273,7 +302,7 @@ footer{position:relative;z-index:1;text-align:center;color:var(--mut);font-size:
    <div class="stat tilt"><small>Сейчас на перерыве</small><div id="offnow" class="muted">—</div></div>
    <div class="stat"><small>Тема</small>
     <div class="seg" id="themeSeg"><button data-m="auto">Авто</button><button data-m="day">☀️ День</button><button data-m="night">🌙 Ночь</button></div>
-    <div><span class="status" id="status"><span class="d"></span>Загрузка…</span><button class="btn bell" id="bellBtn"><span class="bi">🔔</span><span id="bellTx">Выкл</span></button></div>
+    <div><span class="status" id="status"><span class="d"></span>Загрузка…</span><button class="btn bell" id="bellBtn"><span class="bi">🔔</span><span id="bellTx">Выкл</span></button><button class="btn logout" id="logoutBtn" title="Выйти">🚪 Выйти</button></div>
    </div>
   </div>
  </header>
@@ -345,6 +374,8 @@ footer{position:relative;z-index:1;text-align:center;color:var(--mut);font-size:
 (function(){
 // ▼▼▼ АДРЕС ТВОЕЙ БАЗЫ FIREBASE (Realtime Database → Data). Пусто — сайт работает только на этом устройстве ▼▼▼
 var DB_URL='https://smena-e22d4-default-rtdb.europe-west1.firebasedatabase.app/';
+var API_KEY='AIzaSyCxMz_4nt27p4SxR85zMR8_UgZFIcd-3Z8';
+var TEAM_EMAIL='obed@gmail.com';
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 DB_URL=DB_URL.trim().replace(/\/+$/,'');
@@ -410,8 +441,8 @@ function patch(upd){
  renderAll();
  if(!ONLINE){lsSet(LS,JSON.stringify(raw));return}
  setStatus('saving');
- fetch(DB_URL+'/smena.json',{method:'PATCH',body:JSON.stringify(upd)})
-  .then(function(r){if(!r.ok)throw 0;setStatus('online')})
+ fetch(dbu(),{method:'PATCH',body:JSON.stringify(upd)})
+  .then(function(r){if(r.status===401){refreshToken(true);throw 0}if(!r.ok)throw 0;setStatus('online')})
   .catch(function(){setStatus('error')});
 }
 function connect(){
@@ -420,22 +451,23 @@ function connect(){
   if(!raw||!raw.night)raw=JSON.parse(JSON.stringify(DEFAULT));
   setStatus('local');renderAll();return;
  }
- es=new EventSource(DB_URL+'/smena.json');
+ if(es)es.close();es=new EventSource(dbu());
  function onEv(e){
   var m;try{m=JSON.parse(e.data)}catch(x){return}
   if(!m)return;
   if(e.type==='put'){
    if(m.path==='/'){
-    if(m.data===null){fetch(DB_URL+'/smena.json',{method:'PUT',body:JSON.stringify(DEFAULT)});return}
+    if(m.data===null){fetch(dbu(),{method:'PUT',body:JSON.stringify(DEFAULT)});return}
     if(m.data.people&&!m.data.night){ // старая версия базы → переносим в ночную смену
-     fetch(DB_URL+'/smena.json',{method:'PUT',body:JSON.stringify({night:{people:m.data.people,items:m.data.items||{}},day:DEFAULT.day,notes:DEFAULT.notes})});return}
+     fetch(dbu(),{method:'PUT',body:JSON.stringify({night:{people:m.data.people,items:m.data.items||{}},day:DEFAULT.day,notes:DEFAULT.notes})});return}
    }
    setAt(m.path,m.data);
   } else Object.keys(m.data||{}).forEach(function(k){setAt(m.path.replace(/\/$/,'')+'/'+k,m.data[k])});
   setStatus('online');renderAll();
  }
  es.addEventListener('put',onEv);es.addEventListener('patch',onEv);
- es.addEventListener('cancel',function(){setStatus('error')});
+ es.addEventListener('cancel',function(){setStatus('error');refreshToken(true)});
+ es.addEventListener('auth_revoked',function(){refreshToken(true)});
  es.onerror=function(){setStatus('offline')};
  es.onopen=function(){if(status==='offline')setStatus('online')};
 }
@@ -449,7 +481,7 @@ function setStatus(s){
 function applyTheme(){
  var t=themeMode==='auto'?curShift(now()):themeMode;
  var cls='theme-'+t;
- if(document.body.className!==cls){document.body.className=cls;build3D(t)}
+ var bc=document.body.classList;if(!bc.contains(cls)){bc.remove('theme-day','theme-night');bc.add(cls);build3D(t)}
  [].forEach.call($('themeSeg').children,function(b){b.classList.toggle('on',b.getAttribute('data-m')===themeMode)});
 }
 $('themeSeg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;themeMode=b.getAttribute('data-m');lsSet('shifthub-theme',themeMode);applyTheme()});
@@ -781,12 +813,66 @@ function checkTimers(){
 }
 syncNSUI();
 
+/* ---------- Вход (Firebase Auth) ---------- */
+var tok=null,refTok=null,refTimer=null;
+function dbu(){return DB_URL+'/smena.json'+(tok?'?auth='+encodeURIComponent(tok):'')}
+function lock(msg){
+ tok=null;refTok=null;clearTimeout(refTimer);if(es){es.close();es=null}
+ raw=null;seen=null;lsSet('shifthub-auth','');
+ document.body.classList.add('locked');$('lgErr').textContent=msg||'';
+ $('lgEmail').value=lsGet('shifthub-email','')||TEAM_EMAIL;
+ setTimeout(function(){($('lgEmail').value?$('lgPass'):$('lgEmail')).focus()},50);
+}
+function unlock(){document.body.classList.remove('locked');$('lgPass').value='';$('lgErr').textContent=''}
+function gotTokens(id,ref,exp){
+ tok=id;refTok=ref;lsSet('shifthub-auth',ref);
+ clearTimeout(refTimer);refTimer=setTimeout(function(){refreshToken(true)},Math.max(60,(+exp||3600)-300)*1000);
+}
+var refreshing=false;
+function refreshToken(reconnect){
+ if(refreshing||!refTok)return;refreshing=true;
+ fetch('https://securetoken.googleapis.com/v1/token?key='+API_KEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(refTok)})
+  .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+  .then(function(x){refreshing=false;
+   if(!x.ok||!x.j.id_token){var e=(x.j&&x.j.error&&x.j.error.message)||'';
+    if(/TOKEN_EXPIRED|USER_DISABLED|USER_NOT_FOUND|INVALID_REFRESH_TOKEN|INVALID_GRANT_TYPE/.test(e))lock('Сессия закончилась (возможно, сменили пароль). Войди заново.');
+    else{setStatus('offline');setTimeout(function(){refreshToken(reconnect)},15000)}
+    return}
+   gotTokens(x.j.id_token,x.j.refresh_token,x.j.expires_in);unlock();
+   if(reconnect||!es)connect();
+  })
+  .catch(function(){refreshing=false;setStatus('offline');setTimeout(function(){refreshToken(reconnect)},15000)});
+}
+function startAuth(){
+ var saved=lsGet('shifthub-auth','');
+ if(saved){refTok=saved;refreshToken(true)}else lock('');
+}
+var LOGIN_ERR={EMAIL_NOT_FOUND:'Неверный email или пароль',INVALID_PASSWORD:'Неверный email или пароль',INVALID_LOGIN_CREDENTIALS:'Неверный email или пароль',INVALID_EMAIL:'Проверь email',USER_DISABLED:'Аккаунт отключён',TOO_MANY_ATTEMPTS_TRY_LATER:'Слишком много попыток. Подожди пару минут',OPERATION_NOT_ALLOWED:'В Firebase не включён вход по Email/Password'};
+$('lgForm').addEventListener('submit',function(e){
+ e.preventDefault();var em=$('lgEmail').value.trim(),pw=$('lgPass').value;
+ if(!em||!pw)return;
+ $('lgBtn').disabled=true;$('lgBtn').textContent='Вхожу…';$('lgErr').textContent='';
+ fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+API_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw,returnSecureToken:true})})
+  .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+  .then(function(x){
+   $('lgBtn').disabled=false;$('lgBtn').textContent='Войти';
+   if(!x.ok||!x.j.idToken){var m=(x.j&&x.j.error&&x.j.error.message)||'';var k=m.split(' ')[0].replace(/:$/,'');
+    $('lgErr').textContent=LOGIN_ERR[k]||(/API key not valid|API_KEY_INVALID/.test(m)?'Ошибка ключа сайта (API key)':'Не получилось войти: '+m);return}
+   lsSet('shifthub-email',em);gotTokens(x.j.idToken,x.j.refreshToken,x.j.expiresIn);unlock();setStatus('loading');connect();
+  })
+  .catch(function(){$('lgBtn').disabled=false;$('lgBtn').textContent='Войти';$('lgErr').textContent='Нет интернета. Попробуй ещё раз'});
+});
+$('logoutBtn').addEventListener('click',function(){
+ if(this.getAttribute('data-sure')){this.removeAttribute('data-sure');this.textContent='🚪 Выйти';lock('');return}
+ var b=this;b.setAttribute('data-sure','1');b.textContent='Точно выйти?';setTimeout(function(){b.removeAttribute('data-sure');b.textContent='🚪 Выйти'},3000);
+});
+
 /* ---------- запуск ---------- */
 function renderAll(){renderTop();renderTabs();if(!ui.adding)renderSched();renderVideo();renderNotes();renderRoster();fillMe();checkChanges()}
 applyTheme();
-build3D(document.body.className.replace('theme-',''));
+build3D(document.body.classList.contains('theme-day')?'day':'night');
 renderVideo();
-connect();
+startAuth();
 setInterval(function(){renderTop();applyTheme();checkTimers()},1000);
 setInterval(function(){if(raw&&!ui.adding){renderTabs();renderSched();renderNotes()}},30000);
 })();
